@@ -1827,12 +1827,12 @@
       }
     }
 
-    function scheduleWordPause() {
+    function scheduleWordPlayToggle() {
       if (!state.words.length) return;
 
       clearTimeout(state.wordClickTimer);
       state.wordClickTimer = window.setTimeout(() => {
-        pause();
+        state.playing ? pause() : play();
         state.wordClickTimer = null;
       }, 230);
     }
@@ -1855,7 +1855,7 @@
         openOverviewFromWordDoubleClick();
       } else {
         state.lastWordTapAt = now;
-        scheduleWordPause();
+        scheduleWordPlayToggle();
       }
     }
 
@@ -2404,7 +2404,7 @@
     els.word.addEventListener("click", (event) => {
       event.stopPropagation();
       if (state.suppressNextTap) return;
-      scheduleWordPause();
+      scheduleWordPlayToggle();
     });
 
     els.word.addEventListener("dblclick", (event) => {
