@@ -242,6 +242,10 @@
       font-size: 13px;
     }
 
+    #mobilePdfButton {
+      display: none;
+    }
+
     #controls {
       position: absolute;
       z-index: 18;
@@ -714,7 +718,7 @@
       }
 
       #reader {
-        inset: 104px 12px 228px;
+        inset: 104px 12px 254px;
       }
 
       #readerInner {
@@ -774,13 +778,26 @@
         bottom: calc(174px + env(safe-area-inset-bottom));
         display: grid;
         grid-template-columns: 1fr;
-        gap: 4px;
+        gap: 6px;
       }
 
       #progressText {
         min-width: 0;
         text-align: center;
         font-size: 12px;
+      }
+
+      #mobilePdfButton {
+        display: block;
+        width: 100%;
+        background: #202020;
+        color: #fff;
+        border-color: #444;
+        font-weight: 700;
+      }
+
+      #app.text-mode #mobilePdfButton {
+        display: none;
       }
 
       #controls {
@@ -921,6 +938,7 @@
     <div id="progressRow">
       <input id="progress" type="range" min="0" max="0" value="0" disabled />
       <span id="progressText">0 / 0 Wörter</span>
+      <button id="mobilePdfButton" type="button" disabled>PDF anzeigen</button>
     </div>
 
     <div id="controls">
@@ -1038,6 +1056,7 @@
       word: $("word"),
       progress: $("progress"),
       progressText: $("progressText"),
+      mobilePdfButton: $("mobilePdfButton"),
       playButton: $("playButton"),
       backButton: $("backButton"),
       forwardButton: $("forwardButton"),
@@ -1527,6 +1546,7 @@
       els.playButton.disabled = true;
       els.backButton.disabled = true;
       els.forwardButton.disabled = true;
+      els.mobilePdfButton.disabled = true;
       els.app.classList.toggle("text-mode", sourceType === "text");
     }
 
@@ -1540,6 +1560,7 @@
       els.playButton.disabled = false;
       els.backButton.disabled = false;
       els.forwardButton.disabled = false;
+      els.mobilePdfButton.disabled = state.sourceType !== "pdf";
       els.emptyState.style.display = "none";
       els.fileName.textContent = label;
       els.status.textContent = statusText;
@@ -2086,6 +2107,7 @@
     });
 
     els.preview.addEventListener("click", openPdfAtCurrentWord);
+    els.mobilePdfButton.addEventListener("click", openPdfAtCurrentWord);
     els.closeModalButton.addEventListener("click", () => closeModal(true));
 
     els.openNativeButton.addEventListener("click", () => {
