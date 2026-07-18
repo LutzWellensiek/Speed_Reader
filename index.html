@@ -122,6 +122,7 @@
       display: grid;
       place-items: center;
       user-select: none;
+      touch-action: manipulation;
     }
 
     #readerInner {
@@ -157,6 +158,7 @@
       letter-spacing: -0.03em;
       color: #fff;
       transition: font-size .08s linear;
+      cursor: pointer;
     }
 
     #word .orp {
@@ -445,6 +447,69 @@
     }
     #textModal.open { display: grid; }
 
+    #textOverviewModal {
+      position: fixed;
+      inset: 0;
+      z-index: 105;
+      display: none;
+      background: rgba(0,0,0,.94);
+    }
+    #textOverviewModal.open { display: block; }
+
+    #textOverviewToolbar {
+      position: fixed;
+      z-index: 115;
+      left: 50%;
+      top: 14px;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      border-radius: 12px;
+      background: rgba(20,20,20,.95);
+      border: 1px solid #3a3a3a;
+    }
+
+    #textOverviewInfo {
+      color: #bbb;
+      font-size: 13px;
+      padding: 0 6px;
+      white-space: nowrap;
+    }
+
+    #textOverviewScroll {
+      position: absolute;
+      inset: 0;
+      overflow: auto;
+      padding: 86px 24px 80px;
+    }
+
+    #textOverviewContent {
+      max-width: 920px;
+      margin: 0 auto;
+      color: #e8e8e8;
+      font-size: clamp(18px, 2.1vw, 24px);
+      line-height: 1.8;
+    }
+
+    .text-word-hit {
+      display: inline;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .text-word-hit:hover {
+      background: rgba(255, 77, 77, .24);
+      box-shadow: 0 0 0 3px rgba(255, 77, 77, .24);
+    }
+
+    .text-word-hit.current {
+      color: #fff;
+      background: rgba(255, 77, 77, .34);
+      box-shadow: 0 0 0 3px rgba(255, 77, 77, .34);
+    }
+
     #textModalCard {
       width: min(760px, 94vw);
       max-height: min(720px, 92vh);
@@ -728,11 +793,15 @@
       }
 
       #word {
-        font-size: clamp(40px, 16vw, 72px) !important;
+        font-size: clamp(40px, 16vw, 72px);
         line-height: 1.14;
         white-space: normal;
         overflow-wrap: anywhere;
         padding: 0.12em 0 0.2em;
+      }
+
+      #reader {
+        touch-action: none;
       }
 
       .focus-tick {
@@ -834,6 +903,10 @@
         min-width: 0;
       }
 
+      #fontSize {
+        display: none;
+      }
+
       .controlGroup label {
         gap: 6px;
         font-size: 11px;
@@ -898,6 +971,32 @@
 
       #modalScroll {
         padding: 126px 12px 36px;
+      }
+
+      #textOverviewToolbar {
+        top: max(10px, env(safe-area-inset-top));
+        left: 10px;
+        right: 10px;
+        transform: none;
+        flex-wrap: wrap;
+        justify-content: center;
+        border-radius: 8px;
+      }
+
+      #textOverviewInfo {
+        width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-align: center;
+      }
+
+      #textOverviewScroll {
+        padding: 116px 16px 42px;
+      }
+
+      #textOverviewContent {
+        font-size: 18px;
+        line-height: 1.75;
       }
     }
   </style>
@@ -1011,6 +1110,16 @@
       </div>
     </div>
 
+    <div id="textOverviewModal">
+      <div id="textOverviewToolbar">
+        <span id="textOverviewInfo">Textübersicht</span>
+        <button id="closeTextOverviewButton" type="button">Schließen</button>
+      </div>
+      <div id="textOverviewScroll">
+        <div id="textOverviewContent"></div>
+      </div>
+    </div>
+
     <div id="textModal">
       <div id="textModalCard">
         <div id="textModalHeader">
@@ -1050,9 +1159,15 @@
       textArea: $("textArea"),
       loadTextButton: $("loadTextButton"),
       closeTextModalButton: $("closeTextModalButton"),
+      textOverviewModal: $("textOverviewModal"),
+      textOverviewScroll: $("textOverviewScroll"),
+      textOverviewContent: $("textOverviewContent"),
+      textOverviewInfo: $("textOverviewInfo"),
+      closeTextOverviewButton: $("closeTextOverviewButton"),
       fileName: $("fileName"),
       status: $("status"),
       emptyState: $("emptyState"),
+      readerInner: $("readerInner"),
       word: $("word"),
       progress: $("progress"),
       progressText: $("progressText"),
@@ -1107,6 +1222,11 @@
       modalRenderObserver: null,
       modalPageRecords: new Map(),
       voices: [],
+      textOverviewWasPlaying: false,
+      pinchStartDistance: null,
+      pinchStartFontSize: null,
+      pinchActive: false,
+      suppressNextTap: false,
     };
 
     function escapeHtml(text) {
@@ -1528,6 +1648,7 @@
     function prepareForNewSource(sourceType) {
       pause();
       closeModal(false);
+      closeTextOverview(false);
       stopSpeechEngine();
 
       if (state.pdfUrl) {
@@ -1576,6 +1697,110 @@
 
     function closeTextModal() {
       els.textModal.classList.remove("open");
+    }
+
+    function setReaderFontSize(value) {
+      const min = Number(els.fontSize.min);
+      const max = Number(els.fontSize.max);
+      const next = Math.round(Math.max(min, Math.min(max, value)));
+
+      els.fontSize.value = String(next);
+      els.fontValue.textContent = String(next);
+      els.word.style.fontSize = `${next}px`;
+    }
+
+    function touchDistance(touches) {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.hypot(dx, dy);
+    }
+
+    function buildTextOverview() {
+      els.textOverviewContent.innerHTML = "";
+
+      state.words.forEach((entry, index) => {
+        if (index > 0) {
+          els.textOverviewContent.appendChild(document.createTextNode(" "));
+        }
+
+        const word = document.createElement("span");
+        word.className = "text-word-hit";
+        word.dataset.index = String(index);
+        word.textContent = entry.text;
+
+        if (index === state.index) {
+          word.classList.add("current");
+        }
+
+        word.addEventListener("click", event => {
+          event.stopPropagation();
+          selectWordFromTextOverview(index);
+        });
+
+        els.textOverviewContent.appendChild(word);
+      });
+    }
+
+    function openTextOverview() {
+      if (!state.words.length) return;
+
+      state.textOverviewWasPlaying = state.playing;
+
+      if (state.playing) {
+        pause();
+      }
+
+      buildTextOverview();
+      els.textOverviewInfo.textContent =
+        `Textübersicht · Wort ${state.index + 1} von ${state.words.length.toLocaleString("de-DE")}`;
+      els.textOverviewModal.classList.add("open");
+      document.body.style.overflow = "hidden";
+
+      requestAnimationFrame(() => {
+        const current = els.textOverviewContent.querySelector(".current");
+        current?.scrollIntoView({ block: "center", inline: "nearest" });
+      });
+    }
+
+    function closeTextOverview(resumePreviousPlayback = true) {
+      els.textOverviewModal.classList.remove("open");
+      document.body.style.overflow = "";
+
+      const shouldResume =
+        resumePreviousPlayback &&
+        state.textOverviewWasPlaying &&
+        !state.playing;
+
+      state.textOverviewWasPlaying = false;
+
+      if (shouldResume) {
+        play();
+      }
+    }
+
+    function selectWordFromTextOverview(index) {
+      const shouldResume = state.textOverviewWasPlaying && !state.playing;
+
+      state.index = Math.max(0, Math.min(index, state.words.length - 1));
+      renderWord();
+      closeTextOverview(false);
+
+      if (shouldResume) {
+        play();
+      } else {
+        els.status.textContent =
+          `Startposition gesetzt · Wort ${state.index + 1}`;
+      }
+    }
+
+    function openCurrentOverview() {
+      if (!state.words.length) return;
+
+      if (state.sourceType === "pdf") {
+        openPdfAtCurrentWord();
+      } else {
+        openTextOverview();
+      }
     }
 
     function loadPlainText(text) {
@@ -2041,6 +2266,12 @@
       if (event.target === els.textModal) closeTextModal();
     });
 
+    els.closeTextOverviewButton.addEventListener("click", () => closeTextOverview(true));
+
+    els.textOverviewModal.addEventListener("click", (event) => {
+      if (event.target === els.textOverviewModal) closeTextOverview(true);
+    });
+
     els.playButton.addEventListener("click", () => {
       state.playing ? pause() : play();
     });
@@ -2061,8 +2292,7 @@
     });
 
     els.fontSize.addEventListener("input", () => {
-      els.fontValue.textContent = els.fontSize.value;
-      els.word.style.fontSize = `${els.fontSize.value}px`;
+      setReaderFontSize(Number(els.fontSize.value));
     });
 
     els.orpToggle.addEventListener("change", renderWord);
@@ -2108,6 +2338,48 @@
 
     els.preview.addEventListener("click", openPdfAtCurrentWord);
     els.mobilePdfButton.addEventListener("click", openPdfAtCurrentWord);
+    els.readerInner.addEventListener("click", () => {
+      if (state.suppressNextTap) return;
+      openCurrentOverview();
+    });
+
+    els.readerInner.addEventListener("touchstart", (event) => {
+      if (event.touches.length !== 2) return;
+
+      state.pinchActive = true;
+      state.suppressNextTap = true;
+      state.pinchStartDistance = touchDistance(event.touches);
+      state.pinchStartFontSize = Number(els.fontSize.value);
+    }, { passive: true });
+
+    els.readerInner.addEventListener("touchmove", (event) => {
+      if (
+        !state.pinchActive ||
+        event.touches.length !== 2 ||
+        !state.pinchStartDistance
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      const ratio = touchDistance(event.touches) / state.pinchStartDistance;
+      setReaderFontSize(state.pinchStartFontSize * ratio);
+    }, { passive: false });
+
+    function finishPinchGesture() {
+      if (!state.pinchActive) return;
+
+      state.pinchActive = false;
+      state.pinchStartDistance = null;
+      state.pinchStartFontSize = null;
+
+      window.setTimeout(() => {
+        state.suppressNextTap = false;
+      }, 280);
+    }
+
+    els.readerInner.addEventListener("touchend", finishPinchGesture);
+    els.readerInner.addEventListener("touchcancel", finishPinchGesture);
     els.closeModalButton.addEventListener("click", () => closeModal(true));
 
     els.openNativeButton.addEventListener("click", () => {
@@ -2129,6 +2401,11 @@
         return;
       }
 
+      if (event.key === "Escape" && els.textOverviewModal.classList.contains("open")) {
+        closeTextOverview(true);
+        return;
+      }
+
       if (event.key === "Escape" && els.pdfModal.classList.contains("open")) {
         closeModal(true);
         return;
@@ -2137,7 +2414,8 @@
       if (
         editing ||
         els.pdfModal.classList.contains("open") ||
-        els.textModal.classList.contains("open")
+        els.textModal.classList.contains("open") ||
+        els.textOverviewModal.classList.contains("open")
       ) return;
 
       if (event.code === "Space") {
@@ -2191,7 +2469,6 @@
     });
 
     // Anfangszustand
-    els.word.style.fontSize = `${els.fontSize.value}px`;
     els.wpmValue.textContent = els.wpm.value;
     els.fontValue.textContent = els.fontSize.value;
   </script>
