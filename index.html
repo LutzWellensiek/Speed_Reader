@@ -1244,6 +1244,8 @@
       pinchActive: false,
       suppressNextTap: false,
       focusMode: false,
+      wordClickTimer: null,
+      lastWordTapAt: 0,
     };
 
     function escapeHtml(text) {
@@ -1678,6 +1680,9 @@
       state.words = [];
       state.index = 0;
       state.focusMode = false;
+      clearTimeout(state.wordClickTimer);
+      state.wordClickTimer = null;
+      state.lastWordTapAt = 0;
       resetPreview();
       els.progress.max = "0";
       els.progress.value = "0";
@@ -1819,6 +1824,38 @@
         openPdfAtCurrentWord();
       } else {
         openTextOverview();
+      }
+    }
+
+    function scheduleWordPause() {
+      if (!state.words.length) return;
+
+      clearTimeout(state.wordClickTimer);
+      state.wordClickTimer = window.setTimeout(() => {
+        pause();
+        state.wordClickTimer = null;
+      }, 230);
+    }
+
+    function openOverviewFromWordDoubleClick() {
+      if (!state.words.length) return;
+
+      clearTimeout(state.wordClickTimer);
+      state.wordClickTimer = null;
+      openCurrentOverview();
+    }
+
+    function handleWordTouchTap() {
+      if (!state.words.length) return;
+
+      const now = Date.now();
+
+      if (now - state.lastWordTapAt < 320) {
+        state.lastWordTapAt = 0;
+        openOverviewFromWordDoubleClick();
+      } else {
+        state.lastWordTapAt = now;
+        scheduleWordPause();
       }
     }
 
@@ -2367,8 +2404,22 @@
     els.word.addEventListener("click", (event) => {
       event.stopPropagation();
       if (state.suppressNextTap) return;
-      openCurrentOverview();
+      scheduleWordPause();
     });
+
+    els.word.addEventListener("dblclick", (event) => {
+      event.stopPropagation();
+      if (state.suppressNextTap) return;
+      openOverviewFromWordDoubleClick();
+    });
+
+    els.word.addEventListener("touchend", (event) => {
+      event.stopPropagation();
+      if (state.suppressNextTap) return;
+
+      event.preventDefault();
+      handleWordTouchTap();
+    }, { passive: false });
 
     els.readerInner.addEventListener("click", () => {
       if (state.suppressNextTap) return;
