@@ -8,12 +8,15 @@ Eine einzelne hostbare HTML-Seite zum schnellen Lesen von PDFs oder eingefügtem
 
 ## Auf GitHub Pages hosten
 
-1. Erstelle auf GitHub ein neues Repository.
-2. Lade `index.html` und `README.md` in das Repository hoch oder verbinde dieses lokale Projekt per Git.
-3. Öffne im Repository `Settings` > `Pages`.
-4. Wähle `Deploy from a branch`.
-5. Setze `Branch` auf `main` und den Ordner auf `/root`.
-6. Speichern. GitHub zeigt danach die öffentliche URL deiner HTML-Seite an.
+Dieses Repository enthält einen GitHub-Actions-Workflow für GitHub Pages.
+
+1. Öffne im Repository `Settings` > `Pages`.
+2. Wähle als Quelle `GitHub Actions`.
+3. Speichern. Beim nächsten Push veröffentlicht GitHub die Seite automatisch.
+
+Die Seite ist danach normalerweise unter dieser Adresse erreichbar:
+
+`https://lutzwellensiek.github.io/Speed_Reader/`
 
 ## Funktionen
 
