@@ -1,0 +1,1964 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDF Speed Reader v5 – Gesamtdokument</title>
+  <style>
+    :root {
+      --bg: #000;
+      --panel: rgba(18, 18, 18, 0.92);
+      --panel-2: #151515;
+      --text: #fff;
+      --muted: #9b9b9b;
+      --line: #2a2a2a;
+      --accent: #ff4d4d;
+      --control: #222;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+                   "Segoe UI", Arial, sans-serif;
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    button {
+      color: #fff;
+      background: var(--control);
+      border: 1px solid #3a3a3a;
+      border-radius: 10px;
+      padding: 9px 12px;
+      cursor: pointer;
+      transition: background .15s ease, transform .05s ease;
+    }
+    button:hover { background: #303030; }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: .45; cursor: default; }
+
+    #app {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background:
+        radial-gradient(circle at center, rgba(255,255,255,.025), transparent 40%),
+        #000;
+    }
+
+    #topbar {
+      position: absolute;
+      z-index: 20;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    #topbar > * { pointer-events: auto; }
+
+    #fileButton,
+    #textButton {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 39px;
+      background: #fff;
+      color: #000;
+      border-color: #fff;
+      font-weight: 700;
+    }
+
+    #textButton {
+      background: #202020;
+      color: #fff;
+      border-color: #444;
+    }
+
+    #fileInput { display: none; }
+
+    #fileName {
+      max-width: min(44vw, 620px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #cfcfcf;
+      font-size: 14px;
+    }
+
+    #status {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    #dropZone {
+      position: absolute;
+      inset: 0;
+      z-index: 60;
+      display: none;
+      place-items: center;
+      background: rgba(0,0,0,.88);
+      border: 3px dashed #fff;
+      font-size: clamp(24px, 4vw, 48px);
+      font-weight: 800;
+    }
+    #dropZone.visible { display: grid; }
+
+    #reader {
+      position: absolute;
+      inset: 0 0 155px 0;
+      display: grid;
+      place-items: center;
+      user-select: none;
+    }
+
+    #readerInner {
+      position: relative;
+      width: min(96vw, 1700px);
+      min-height: 56vh;
+      display: grid;
+      place-items: center;
+      overflow: visible;
+    }
+
+    .focus-tick {
+      position: absolute;
+      left: 50%;
+      width: 1px;
+      height: 30px;
+      background: #555;
+      transform: translateX(-50%);
+      opacity: .65;
+    }
+    #tickTop { top: 0; }
+    #tickBottom { bottom: 0; }
+
+    #word {
+      width: 100%;
+      text-align: center;
+      white-space: nowrap;
+      overflow: visible;
+      font-size: 86px;
+      font-weight: 650;
+      line-height: 1.28;
+      padding: 0.16em 0 0.24em;
+      letter-spacing: -0.03em;
+      color: #fff;
+      transition: font-size .08s linear;
+    }
+
+    #word .orp {
+      color: var(--accent);
+    }
+
+    #emptyState {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 30px;
+      background: #000;
+      z-index: 10;
+    }
+
+    #emptyStateCard {
+      width: min(650px, 90vw);
+      padding: 42px;
+      border: 1px solid #272727;
+      border-radius: 20px;
+      background: #080808;
+    }
+
+    #emptyState h1 {
+      margin: 0 0 12px;
+      font-size: clamp(34px, 6vw, 72px);
+      letter-spacing: -.05em;
+    }
+
+    #emptyState p {
+      color: #aaa;
+      font-size: 17px;
+      line-height: 1.55;
+      margin: 0 0 24px;
+    }
+
+    .emptyActions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    #emptyChoose,
+    #emptyTextButton {
+      background: #fff;
+      color: #000;
+      border-color: #fff;
+      font-weight: 800;
+      padding: 13px 18px;
+    }
+
+    #emptyTextButton {
+      background: #202020;
+      color: #fff;
+      border-color: #444;
+    }
+
+    #progressRow {
+      position: absolute;
+      z-index: 18;
+      left: 22px;
+      right: 342px;
+      bottom: 130px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    #progress {
+      flex: 1;
+      accent-color: #fff;
+    }
+
+    #progressText {
+      min-width: 185px;
+      text-align: right;
+      color: #aaa;
+      font-variant-numeric: tabular-nums;
+      font-size: 13px;
+    }
+
+    #controls {
+      position: absolute;
+      z-index: 18;
+      left: 16px;
+      right: 330px;
+      bottom: 16px;
+      min-height: 98px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 14px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      backdrop-filter: blur(14px);
+    }
+
+    .transport {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex: 0 0 auto;
+    }
+
+    #playButton {
+      min-width: 56px;
+      height: 46px;
+      font-size: 20px;
+      background: #fff;
+      color: #000;
+      border-color: #fff;
+      font-weight: 900;
+    }
+
+    .controlGroup {
+      min-width: 150px;
+      flex: 1 1 200px;
+    }
+
+    .controlGroup label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      color: #aaa;
+      font-size: 12px;
+      margin-bottom: 7px;
+    }
+
+    .controlGroup strong {
+      color: #fff;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #fff;
+    }
+
+    #voiceGroup {
+      flex: 1.25 1 240px;
+      min-width: 210px;
+    }
+
+    #voiceSelect {
+      width: 100%;
+      height: 31px;
+      background: #191919;
+      color: white;
+      border: 1px solid #383838;
+      border-radius: 8px;
+      padding: 0 8px;
+    }
+
+    .toggleRow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 7px;
+      color: #bbb;
+      font-size: 12px;
+    }
+
+    .toggle {
+      position: relative;
+      width: 42px;
+      height: 23px;
+      flex: 0 0 auto;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #3a3a3a;
+      border-radius: 99px;
+      transition: .2s;
+    }
+    .slider:before {
+      content: "";
+      position: absolute;
+      height: 17px;
+      width: 17px;
+      left: 3px;
+      top: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: .2s;
+    }
+    .toggle input:checked + .slider { background: #777; }
+    .toggle input:checked + .slider:before { transform: translateX(19px); }
+
+    #preview {
+      position: absolute;
+      z-index: 18;
+      right: 16px;
+      bottom: 16px;
+      width: 300px;
+      height: 250px;
+      padding: 10px;
+      border: 1px solid #333;
+      border-radius: 15px;
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    #app.text-mode #preview {
+      display: none;
+    }
+
+    #app.text-mode #controls {
+      right: 16px;
+    }
+
+    #app.text-mode #progressRow {
+      right: 22px;
+    }
+
+    #previewHeader {
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #aaa;
+      font-size: 12px;
+    }
+
+    #previewHeader strong { color: #fff; }
+
+    #previewStage {
+      position: relative;
+      height: 204px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border-radius: 8px;
+      background: #0a0a0a;
+    }
+
+    #previewCanvas {
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+      box-shadow: 0 0 0 1px #333;
+    }
+
+    #previewMarker {
+      position: absolute;
+      display: none;
+      border: 2px solid var(--accent);
+      background: rgba(255,77,77,.18);
+      border-radius: 2px;
+      pointer-events: none;
+    }
+
+    #pdfModal {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      background: rgba(0,0,0,.94);
+    }
+    #pdfModal.open { display: block; }
+
+    #textModal {
+      position: fixed;
+      inset: 0;
+      z-index: 120;
+      display: none;
+      place-items: center;
+      padding: 22px;
+      background: rgba(0,0,0,.82);
+    }
+    #textModal.open { display: grid; }
+
+    #textModalCard {
+      width: min(760px, 94vw);
+      max-height: min(720px, 92vh);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 20px;
+      border: 1px solid #343434;
+      border-radius: 12px;
+      background: #101010;
+      box-shadow: 0 24px 80px rgba(0,0,0,.55);
+    }
+
+    #textModalHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    #textModalHeader h2 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    #textArea {
+      width: 100%;
+      min-height: 320px;
+      resize: vertical;
+      padding: 14px;
+      border: 1px solid #343434;
+      border-radius: 8px;
+      background: #070707;
+      color: #fff;
+      line-height: 1.5;
+    }
+
+    #textArea:focus {
+      outline: 2px solid rgba(255,255,255,.45);
+      outline-offset: 2px;
+    }
+
+    #textModalActions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    #loadTextButton {
+      background: #fff;
+      color: #000;
+      border-color: #fff;
+      font-weight: 800;
+    }
+
+    #modalToolbar {
+      position: fixed;
+      z-index: 110;
+      left: 50%;
+      top: 14px;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      border-radius: 12px;
+      background: rgba(20,20,20,.95);
+      border: 1px solid #3a3a3a;
+    }
+
+    #modalInfo {
+      color: #bbb;
+      font-size: 13px;
+      padding: 0 6px;
+      white-space: nowrap;
+    }
+
+    #modalScroll {
+      position: absolute;
+      inset: 0;
+      overflow: auto;
+      padding: 80px 28px 80px;
+    }
+
+    #modalDocument {
+      width: max-content;
+      min-width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .modal-page {
+      position: relative;
+      flex: 0 0 auto;
+      background: white;
+      box-shadow: 0 10px 60px rgba(0,0,0,.5);
+    }
+
+    .modal-page::before {
+      content: attr(data-page-label);
+      position: absolute;
+      top: -19px;
+      left: 2px;
+      color: #9b9b9b;
+      font-size: 11px;
+      pointer-events: none;
+    }
+
+    .modal-page-canvas {
+      display: block;
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+
+    .modal-page-placeholder {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      display: grid;
+      place-items: center;
+      background: #f3f3f3;
+      color: #777;
+      font-size: 13px;
+    }
+
+    .modal-word-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: auto;
+    }
+
+    .modal-word-hitbox {
+      position: absolute;
+      min-width: 5px;
+      min-height: 7px;
+      cursor: pointer;
+      border-radius: 3px;
+      background: transparent;
+      transition: background .08s ease, box-shadow .08s ease;
+    }
+
+    .modal-word-hitbox:hover {
+      background: rgba(255, 77, 77, .28);
+      box-shadow: 0 0 0 1px rgba(255, 77, 77, .85);
+    }
+
+    .modal-marker {
+      position: absolute;
+      z-index: 4;
+      display: none;
+      border: 3px solid var(--accent);
+      background: rgba(255,77,77,.22);
+      border-radius: 3px;
+      pointer-events: none;
+      box-shadow: 0 0 18px rgba(255,77,77,.5);
+    }
+
+    #loadingOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: none;
+      place-items: center;
+      background: rgba(0,0,0,.88);
+    }
+    #loadingOverlay.visible { display: grid; }
+
+    #loadingCard {
+      width: min(520px, 88vw);
+      padding: 28px;
+      border: 1px solid #333;
+      background: #0b0b0b;
+      border-radius: 16px;
+    }
+
+    #loadingTitle {
+      font-size: 21px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    #loadingBar {
+      width: 100%;
+      height: 7px;
+      background: #252525;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    #loadingFill {
+      height: 100%;
+      width: 0%;
+      background: #fff;
+      transition: width .12s linear;
+    }
+
+    #loadingText {
+      margin-top: 9px;
+      color: #999;
+      font-size: 13px;
+    }
+
+    @media (max-width: 980px) {
+      #preview {
+        width: 240px;
+        height: 210px;
+      }
+      #previewStage { height: 164px; }
+      #controls { right: 256px; gap: 10px; flex-wrap: wrap; }
+      #progressRow { right: 266px; }
+      #reader { bottom: 210px; }
+      #voiceGroup { display: none; }
+    }
+
+    @media (max-width: 720px) {
+      #preview { display: none; }
+      #controls { right: 16px; }
+      #progressRow { right: 22px; bottom: 145px; }
+      #reader { bottom: 220px; }
+      #word { font-size: 58px; }
+      #progressText { min-width: 120px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <div id="topbar">
+      <label id="fileButton" for="fileInput">PDF öffnen</label>
+      <input id="fileInput" type="file" accept="application/pdf,.pdf" />
+      <button id="textButton" type="button">Text einfügen</button>
+      <span id="fileName">Noch kein Dokument geladen</span>
+      <span id="status">Bereit</span>
+    </div>
+
+    <div id="reader">
+      <div id="readerInner">
+        <div id="tickTop" class="focus-tick"></div>
+        <div id="word">Bereit</div>
+        <div id="tickBottom" class="focus-tick"></div>
+      </div>
+    </div>
+
+    <div id="emptyState">
+      <div id="emptyStateCard">
+        <h1>PDF Speed Reader</h1>
+        <p>
+          PDF lokal öffnen. Der Text wird Wort für Wort mittig angezeigt.
+          Die PDF bleibt auf deinem Gerät; nur die PDF.js-Bibliothek wird aus dem Web geladen.
+        </p>
+        <div class="emptyActions">
+          <label id="emptyChoose" for="fileInput">PDF auswählen</label>
+          <button id="emptyTextButton" type="button">Text einfügen</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="progressRow">
+      <input id="progress" type="range" min="0" max="0" value="0" disabled />
+      <span id="progressText">0 / 0 Wörter</span>
+    </div>
+
+    <div id="controls">
+      <div class="transport">
+        <button id="backButton" title="10 Wörter zurück" disabled>−10</button>
+        <button id="playButton" title="Start/Pause" disabled>▶</button>
+        <button id="forwardButton" title="10 Wörter vor" disabled>+10</button>
+      </div>
+
+      <div class="controlGroup">
+        <label>
+          <span>Geschwindigkeit</span>
+          <strong><span id="wpmValue">350</span> WPM</strong>
+        </label>
+        <input id="wpm" type="range" min="60" max="1200" step="10" value="350" />
+      </div>
+
+      <div class="controlGroup">
+        <label>
+          <span>Schriftgröße</span>
+          <strong><span id="fontValue">86</span> px</strong>
+        </label>
+        <input id="fontSize" type="range" min="32" max="220" step="2" value="86" />
+        <div class="toggleRow">
+          <span>Fokusbuchstabe</span>
+          <label class="toggle">
+            <input id="orpToggle" type="checkbox" checked />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div id="voiceGroup" class="controlGroup">
+        <label>
+          <span>Vorlesestimme</span>
+          <strong id="speechState">Aus</strong>
+        </label>
+        <select id="voiceSelect"></select>
+        <div class="toggleRow">
+          <span>Synchron vorlesen</span>
+          <label class="toggle">
+            <input id="speechToggle" type="checkbox" />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div id="preview" title="Klicken: aktuelle Stelle groß in der PDF anzeigen">
+      <div id="previewHeader">
+        <span>PDF-POSITION</span>
+        <strong id="pageLabel">Seite –</strong>
+      </div>
+      <div id="previewStage">
+        <canvas id="previewCanvas"></canvas>
+        <div id="previewMarker"></div>
+      </div>
+    </div>
+
+    <div id="dropZone">PDF hier ablegen</div>
+
+    <div id="pdfModal">
+      <div id="modalToolbar">
+        <span id="modalInfo">Seite –</span>
+        <button id="openNativeButton">Im PDF-Viewer öffnen</button>
+        <button id="closeModalButton">Schließen</button>
+      </div>
+      <div id="modalScroll">
+        <div id="modalDocument"></div>
+      </div>
+    </div>
+
+    <div id="textModal">
+      <div id="textModalCard">
+        <div id="textModalHeader">
+          <h2>Text einfügen</h2>
+          <button id="closeTextModalButton" type="button">Schließen</button>
+        </div>
+        <textarea id="textArea" spellcheck="true" placeholder="Text hier einfügen ..."></textarea>
+        <div id="textModalActions">
+          <button id="loadTextButton" type="button">Text laden</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="loadingOverlay">
+      <div id="loadingCard">
+        <div id="loadingTitle">PDF wird analysiert</div>
+        <div id="loadingBar"><div id="loadingFill"></div></div>
+        <div id="loadingText">Text wird extrahiert …</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs";
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
+
+    const $ = (id) => document.getElementById(id);
+
+    const els = {
+      app: $("app"),
+      fileInput: $("fileInput"),
+      textButton: $("textButton"),
+      emptyTextButton: $("emptyTextButton"),
+      textModal: $("textModal"),
+      textArea: $("textArea"),
+      loadTextButton: $("loadTextButton"),
+      closeTextModalButton: $("closeTextModalButton"),
+      fileName: $("fileName"),
+      status: $("status"),
+      emptyState: $("emptyState"),
+      word: $("word"),
+      progress: $("progress"),
+      progressText: $("progressText"),
+      playButton: $("playButton"),
+      backButton: $("backButton"),
+      forwardButton: $("forwardButton"),
+      wpm: $("wpm"),
+      wpmValue: $("wpmValue"),
+      fontSize: $("fontSize"),
+      fontValue: $("fontValue"),
+      orpToggle: $("orpToggle"),
+      speechToggle: $("speechToggle"),
+      speechState: $("speechState"),
+      voiceSelect: $("voiceSelect"),
+      preview: $("preview"),
+      previewStage: $("previewStage"),
+      previewCanvas: $("previewCanvas"),
+      previewMarker: $("previewMarker"),
+      pageLabel: $("pageLabel"),
+      pdfModal: $("pdfModal"),
+      modalScroll: $("modalScroll"),
+      modalDocument: $("modalDocument"),
+      modalInfo: $("modalInfo"),
+      openNativeButton: $("openNativeButton"),
+      closeModalButton: $("closeModalButton"),
+      loadingOverlay: $("loadingOverlay"),
+      loadingFill: $("loadingFill"),
+      loadingText: $("loadingText"),
+      dropZone: $("dropZone"),
+    };
+
+    const state = {
+      pdf: null,
+      pdfUrl: null,
+      sourceType: null,
+      words: [],
+      index: 0,
+      playing: false,
+      timer: null,
+      currentPreviewPage: null,
+      previewScale: 1,
+      modalScale: 1,
+      speechUtterance: null,
+      speechStartIndex: 0,
+      speechRestartTimer: null,
+      speechWatchdog: null,
+      speechToken: 0,
+      speechRetryCount: 0,
+      modalWasPlaying: false,
+      modalOpenToken: 0,
+      modalRenderObserver: null,
+      modalPageRecords: new Map(),
+      voices: [],
+    };
+
+    function escapeHtml(text) {
+      return text.replace(/[&<>"']/g, ch => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[ch]));
+    }
+
+    function getOrpIndex(word) {
+      const cleanLen = Math.max(1, [...word].length);
+      if (cleanLen <= 1) return 0;
+      if (cleanLen <= 5) return 1;
+      if (cleanLen <= 9) return 2;
+      if (cleanLen <= 13) return 3;
+      return 4;
+    }
+
+    function renderWord() {
+      if (!state.words.length) {
+        els.word.textContent = "Bereit";
+        return;
+      }
+
+      state.index = Math.max(0, Math.min(state.index, state.words.length - 1));
+      const entry = state.words[state.index];
+      const text = entry.text;
+
+      if (els.orpToggle.checked && text.length > 0) {
+        const chars = [...text];
+        const idx = Math.min(getOrpIndex(text), chars.length - 1);
+        const before = escapeHtml(chars.slice(0, idx).join(""));
+        const focus = escapeHtml(chars[idx] || "");
+        const after = escapeHtml(chars.slice(idx + 1).join(""));
+        els.word.innerHTML = `${before}<span class="orp">${focus}</span>${after}`;
+      } else {
+        els.word.textContent = text;
+      }
+
+      els.progress.value = state.index;
+      updateInfo();
+      updatePreviewMarker();
+    }
+
+    function formatTime(seconds) {
+      if (!Number.isFinite(seconds) || seconds < 0) seconds = 0;
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      return `${m}:${String(s).padStart(2, "0")}`;
+    }
+
+    function updateInfo() {
+      if (!state.words.length) {
+        els.progressText.textContent = "0 / 0 Wörter";
+        els.pageLabel.textContent = "Seite –";
+        return;
+      }
+
+      const entry = state.words[state.index];
+      const wpm = Number(els.wpm.value);
+      const elapsed = state.index / wpm * 60;
+      const total = state.words.length / wpm * 60;
+
+      els.progressText.textContent =
+        `${state.index + 1} / ${state.words.length.toLocaleString("de-DE")} · ${formatTime(elapsed)} / ${formatTime(total)}`;
+
+      if (!state.pdf) {
+        els.pageLabel.textContent = "Text";
+        els.previewMarker.style.display = "none";
+        return;
+      }
+
+      els.pageLabel.textContent = `Seite ${entry.page} / ${state.pdf.numPages}`;
+
+      if (entry.page !== state.currentPreviewPage) {
+        renderPreviewPage(entry.page);
+      }
+    }
+
+    function intervalMs() {
+      return 60000 / Number(els.wpm.value);
+    }
+
+    function scheduleNext() {
+      clearTimeout(state.timer);
+      if (!state.playing) return;
+
+      state.timer = setTimeout(() => {
+        if (!state.playing) return;
+
+        if (state.index >= state.words.length - 1) {
+          finishPlayback();
+          return;
+        }
+
+        state.index += 1;
+        renderWord();
+        scheduleNext();
+      }, intervalMs());
+    }
+
+    function stopSpeechEngine() {
+      clearTimeout(state.speechRestartTimer);
+      clearTimeout(state.speechWatchdog);
+      state.speechToken += 1;
+
+      if ("speechSynthesis" in window) {
+        try {
+          speechSynthesis.cancel();
+        } catch (error) {
+          console.warn("speechSynthesis.cancel fehlgeschlagen:", error);
+        }
+      }
+    }
+
+    function finishPlayback() {
+      state.playing = false;
+      clearTimeout(state.timer);
+      stopSpeechEngine();
+
+      els.playButton.textContent = "▶";
+      els.status.textContent = "Ende";
+      els.speechState.textContent = els.speechToggle.checked ? "Bereit" : "Aus";
+    }
+
+    function play() {
+      if (!state.words.length || state.playing) return;
+
+      if (state.index >= state.words.length - 1) {
+        state.index = 0;
+        renderWord();
+      }
+
+      state.playing = true;
+      els.playButton.textContent = "❚❚";
+      els.status.textContent = els.speechToggle.checked
+        ? "Läuft · Audio parallel"
+        : "Läuft";
+
+      scheduleNext();
+
+      if (els.speechToggle.checked) {
+        state.speechRetryCount = 0;
+        startSpeechFromCurrent();
+      }
+    }
+
+    function pause() {
+      state.playing = false;
+      clearTimeout(state.timer);
+      stopSpeechEngine();
+
+      els.playButton.textContent = "▶";
+      els.status.textContent = state.words.length ? "Pausiert" : "Bereit";
+      els.speechState.textContent = els.speechToggle.checked ? "Bereit" : "Aus";
+    }
+
+    function jumpTo(index, restartSpeech = true) {
+      const wasPlaying = state.playing;
+
+      state.index = Math.max(0, Math.min(index, state.words.length - 1));
+      renderWord();
+
+      if (!wasPlaying) return;
+
+      scheduleNext();
+
+      if (restartSpeech && els.speechToggle.checked) {
+        restartSpeechSoon();
+      }
+    }
+
+    function getSelectedVoice() {
+      const name = els.voiceSelect.value;
+      return state.voices.find(v => v.name === name) || state.voices[0] || null;
+    }
+
+    function speechRateForWpm(wpm) {
+      const baseRate = wpm / 180;
+
+      if (wpm <= 300) {
+        return Math.max(0.1, baseRate);
+      }
+
+      const highSpeedBoost = 1 + ((wpm - 300) / 900) * 0.9;
+      return Math.max(0.1, Math.min(10, baseRate * highSpeedBoost));
+    }
+
+    function speechChunkSize(wpm) {
+      if (wpm >= 900) return 14;
+      if (wpm >= 700) return 18;
+      if (wpm >= 500) return 24;
+      if (wpm >= 300) return 32;
+      return 42;
+    }
+
+    function startSpeechFromCurrent() {
+      if (
+        !("speechSynthesis" in window) ||
+        !els.speechToggle.checked ||
+        !state.words.length ||
+        !state.playing
+      ) {
+        return;
+      }
+
+      clearTimeout(state.speechRestartTimer);
+      clearTimeout(state.speechWatchdog);
+
+      const token = ++state.speechToken;
+
+      try {
+        speechSynthesis.cancel();
+      } catch (error) {
+        console.warn("Audio-Cancel fehlgeschlagen:", error);
+      }
+
+      const chunkStart = state.index;
+      const currentWpm = Number(els.wpm.value);
+      const chunkEnd = Math.min(
+        state.words.length,
+        chunkStart + speechChunkSize(currentWpm)
+      );
+
+      const chunkWords = state.words
+        .slice(chunkStart, chunkEnd)
+        .map(word => word.text);
+
+      if (!chunkWords.length) return;
+
+      const utterance = new SpeechSynthesisUtterance(chunkWords.join(" "));
+      const voice = getSelectedVoice();
+
+      if (voice) {
+        utterance.voice = voice;
+        utterance.lang = voice.lang;
+      } else {
+        utterance.lang = "de-DE";
+      }
+
+      utterance.rate = speechRateForWpm(currentWpm);
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      state.speechUtterance = utterance;
+
+      const expectedMs = Math.max(
+        4500,
+        Math.min(
+          30000,
+          (chunkWords.length / Math.max(60, currentWpm)) * 60000 * 4 + 2500
+        )
+      );
+
+      utterance.onstart = () => {
+        if (token !== state.speechToken) return;
+
+        state.speechRetryCount = 0;
+        els.speechState.textContent = "An";
+        els.status.textContent = "Läuft · Audio parallel";
+
+        clearTimeout(state.speechWatchdog);
+        state.speechWatchdog = setTimeout(() => {
+          if (
+            token !== state.speechToken ||
+            !state.playing ||
+            !els.speechToggle.checked
+          ) {
+            return;
+          }
+
+          els.speechState.textContent = "Neustart";
+          restartSpeechSoon(80);
+        }, expectedMs);
+      };
+
+      utterance.onend = () => {
+        if (
+          token !== state.speechToken ||
+          !state.playing ||
+          !els.speechToggle.checked
+        ) {
+          return;
+        }
+
+        clearTimeout(state.speechWatchdog);
+
+        clearTimeout(state.speechRestartTimer);
+        state.speechRestartTimer = setTimeout(() => {
+          if (
+            token === state.speechToken &&
+            state.playing &&
+            els.speechToggle.checked
+          ) {
+            startSpeechFromCurrent();
+          }
+        }, 25);
+      };
+
+      utterance.onerror = event => {
+        if (token !== state.speechToken) return;
+
+        clearTimeout(state.speechWatchdog);
+
+        if (event.error === "canceled" || event.error === "interrupted") {
+          return;
+        }
+
+        console.warn("Speech-Synthesis-Fehler:", event.error);
+        state.speechRetryCount += 1;
+
+        if (state.speechRetryCount <= 3) {
+          els.speechState.textContent = "Neustart";
+          clearTimeout(state.speechRestartTimer);
+          state.speechRestartTimer = setTimeout(() => {
+            if (
+              token === state.speechToken &&
+              state.playing &&
+              els.speechToggle.checked
+            ) {
+              startSpeechFromCurrent();
+            }
+          }, 300 * state.speechRetryCount);
+        } else {
+          els.speechToggle.checked = false;
+          els.speechState.textContent = "Nicht verfügbar";
+          els.status.textContent = "Läuft · Audio deaktiviert";
+        }
+      };
+
+      try {
+        speechSynthesis.speak(utterance);
+
+        // Manche Browser bleiben gelegentlich auf "paused" hängen.
+        if (speechSynthesis.paused) {
+          speechSynthesis.resume();
+        }
+      } catch (error) {
+        console.error("Audio konnte nicht gestartet werden:", error);
+        els.speechState.textContent = "Fehler";
+      }
+    }
+
+    function restartSpeechSoon(delay = 160) {
+      clearTimeout(state.speechRestartTimer);
+      clearTimeout(state.speechWatchdog);
+
+      const restartToken = ++state.speechToken;
+
+      if ("speechSynthesis" in window) {
+        try {
+          speechSynthesis.cancel();
+        } catch (error) {
+          console.warn("Audio-Neustart: Cancel fehlgeschlagen:", error);
+        }
+      }
+
+      state.speechRestartTimer = setTimeout(() => {
+        if (
+          restartToken === state.speechToken &&
+          state.playing &&
+          els.speechToggle.checked
+        ) {
+          startSpeechFromCurrent();
+        }
+      }, delay);
+    }
+
+    function loadVoices() {
+      if (!("speechSynthesis" in window)) {
+        els.voiceSelect.innerHTML = "<option>Keine Browser-Stimme verfügbar</option>";
+        els.speechToggle.disabled = true;
+        return;
+      }
+
+      state.voices = speechSynthesis.getVoices();
+      const sorted = [...state.voices].sort((a, b) => {
+        const aDe = a.lang?.toLowerCase().startsWith("de") ? 0 : 1;
+        const bDe = b.lang?.toLowerCase().startsWith("de") ? 0 : 1;
+        return aDe - bDe || a.name.localeCompare(b.name);
+      });
+
+      state.voices = sorted;
+      els.voiceSelect.innerHTML = "";
+
+      for (const voice of sorted) {
+        const option = document.createElement("option");
+        option.value = voice.name;
+        option.textContent = `${voice.name} (${voice.lang})`;
+        els.voiceSelect.appendChild(option);
+      }
+
+      const preferred =
+        sorted.find(v => v.lang?.toLowerCase() === "de-de") ||
+        sorted.find(v => v.lang?.toLowerCase().startsWith("de")) ||
+        sorted[0];
+
+      if (preferred) els.voiceSelect.value = preferred.name;
+    }
+
+    if ("speechSynthesis" in window) {
+      loadVoices();
+      speechSynthesis.onvoiceschanged = loadVoices;
+    } else {
+      loadVoices();
+    }
+
+    function resetPreview() {
+      state.currentPreviewPage = null;
+      els.previewMarker.style.display = "none";
+      const ctx = els.previewCanvas.getContext("2d");
+      ctx?.clearRect(0, 0, els.previewCanvas.width, els.previewCanvas.height);
+      els.previewCanvas.removeAttribute("style");
+      els.pageLabel.textContent = "Seite –";
+    }
+
+    function prepareForNewSource(sourceType) {
+      pause();
+      closeModal(false);
+      stopSpeechEngine();
+
+      if (state.pdfUrl) {
+        URL.revokeObjectURL(state.pdfUrl);
+      }
+
+      state.pdf = null;
+      state.pdfUrl = null;
+      state.sourceType = sourceType;
+      state.words = [];
+      state.index = 0;
+      resetPreview();
+      els.progress.max = "0";
+      els.progress.value = "0";
+      els.progress.disabled = true;
+      els.playButton.disabled = true;
+      els.backButton.disabled = true;
+      els.forwardButton.disabled = true;
+      els.app.classList.toggle("text-mode", sourceType === "text");
+    }
+
+    function activateReader(words, label, statusText) {
+      state.words = words;
+      state.index = 0;
+
+      els.progress.max = String(state.words.length - 1);
+      els.progress.value = "0";
+      els.progress.disabled = false;
+      els.playButton.disabled = false;
+      els.backButton.disabled = false;
+      els.forwardButton.disabled = false;
+      els.emptyState.style.display = "none";
+      els.fileName.textContent = label;
+      els.status.textContent = statusText;
+
+      renderWord();
+    }
+
+    function openTextModal() {
+      pause();
+      els.textModal.classList.add("open");
+      requestAnimationFrame(() => els.textArea.focus());
+    }
+
+    function closeTextModal() {
+      els.textModal.classList.remove("open");
+    }
+
+    function loadPlainText(text) {
+      const matches = text.trim().match(/\S+/g) || [];
+
+      if (!matches.length) {
+        alert("Bitte zuerst Text einfügen.");
+        return;
+      }
+
+      prepareForNewSource("text");
+      activateReader(
+        matches.map(word => ({ text: word, page: null, box: null })),
+        "Eingefügter Text",
+        `${matches.length.toLocaleString("de-DE")} Wörter · Text`
+      );
+      els.pageLabel.textContent = "Text";
+      closeTextModal();
+    }
+
+    async function loadPdf(file) {
+      if (!file || file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+        alert("Bitte eine PDF-Datei auswählen.");
+        return;
+      }
+
+      prepareForNewSource("pdf");
+      closeTextModal();
+      els.loadingOverlay.classList.add("visible");
+      els.loadingFill.style.width = "0%";
+      els.loadingText.textContent = "PDF wird geladen …";
+      els.fileName.textContent = file.name;
+      els.status.textContent = "Analysiere PDF …";
+
+      state.pdfUrl = URL.createObjectURL(file);
+
+      try {
+        const data = await file.arrayBuffer();
+        const loadingTask = pdfjsLib.getDocument({ data });
+        state.pdf = await loadingTask.promise;
+
+        const allWords = [];
+
+        for (let pageNum = 1; pageNum <= state.pdf.numPages; pageNum++) {
+          const page = await state.pdf.getPage(pageNum);
+          const viewport = page.getViewport({ scale: 1 });
+          const content = await page.getTextContent();
+
+          for (const item of content.items) {
+            if (!item.str || !item.str.trim()) continue;
+
+            const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+            const raw = item.str;
+            const itemWidth = Math.abs(item.width || 0);
+            const itemHeight = Math.max(
+              6,
+              Math.abs(item.height || 0),
+              Math.hypot(tx[2], tx[3])
+            );
+
+            const matches = [...raw.matchAll(/\S+/g)];
+
+            for (const match of matches) {
+              const start = match.index ?? 0;
+              const end = start + match[0].length;
+              const denom = Math.max(1, raw.length);
+
+              const x = tx[4] + itemWidth * (start / denom);
+              const width = Math.max(2, itemWidth * ((end - start) / denom));
+              const y = tx[5] - itemHeight;
+
+              allWords.push({
+                text: match[0],
+                page: pageNum,
+                box: {
+                  x,
+                  y,
+                  width,
+                  height: itemHeight,
+                  pageWidth: viewport.width,
+                  pageHeight: viewport.height
+                }
+              });
+            }
+          }
+
+          const pct = Math.round(pageNum / state.pdf.numPages * 100);
+          els.loadingFill.style.width = `${pct}%`;
+          els.loadingText.textContent =
+            `Seite ${pageNum} von ${state.pdf.numPages} · ${allWords.length.toLocaleString("de-DE")} Wörter`;
+          await new Promise(requestAnimationFrame);
+        }
+
+        if (!allWords.length) {
+          throw new Error("In dieser PDF wurde kein extrahierbarer Text gefunden. Vermutlich ist es ein Scan ohne Textebene.");
+        }
+
+        activateReader(
+          allWords,
+          file.name,
+          `${allWords.length.toLocaleString("de-DE")} Wörter · ${state.pdf.numPages} Seiten`
+        );
+
+        await renderPreviewPage(1);
+      } catch (err) {
+        console.error(err);
+        els.status.textContent = "PDF konnte nicht gelesen werden";
+        alert(err?.message || "Die PDF konnte nicht verarbeitet werden.");
+      } finally {
+        els.loadingOverlay.classList.remove("visible");
+      }
+    }
+
+    async function renderPreviewPage(pageNum) {
+      if (!state.pdf) {
+        state.currentPreviewPage = null;
+        els.previewMarker.style.display = "none";
+        return;
+      }
+
+      state.currentPreviewPage = pageNum;
+      const page = await state.pdf.getPage(pageNum);
+      const base = page.getViewport({ scale: 1 });
+
+      const maxW = els.previewStage.clientWidth - 8;
+      const maxH = els.previewStage.clientHeight - 8;
+      const scale = Math.min(maxW / base.width, maxH / base.height);
+      const viewport = page.getViewport({ scale });
+
+      const canvas = els.previewCanvas;
+      const ctx = canvas.getContext("2d", { alpha: false });
+      const dpr = window.devicePixelRatio || 1;
+
+      canvas.width = Math.floor(viewport.width * dpr);
+      canvas.height = Math.floor(viewport.height * dpr);
+      canvas.style.width = `${viewport.width}px`;
+      canvas.style.height = `${viewport.height}px`;
+
+      const renderContext = {
+        canvasContext: ctx,
+        viewport,
+        transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null
+      };
+
+      await page.render(renderContext).promise;
+      state.previewScale = scale;
+      updatePreviewMarker();
+    }
+
+    function updatePreviewMarker() {
+      if (!state.words.length || !state.pdf) {
+        els.previewMarker.style.display = "none";
+        return;
+      }
+
+      const entry = state.words[state.index];
+      if (entry.page !== state.currentPreviewPage) return;
+
+      const box = entry.box;
+      const canvasRect = els.previewCanvas.getBoundingClientRect();
+      const stageRect = els.previewStage.getBoundingClientRect();
+
+      const offsetX = canvasRect.left - stageRect.left;
+      const offsetY = canvasRect.top - stageRect.top;
+      const scaleX = canvasRect.width / box.pageWidth;
+      const scaleY = canvasRect.height / box.pageHeight;
+
+      els.previewMarker.style.display = "block";
+      els.previewMarker.style.left = `${offsetX + box.x * scaleX}px`;
+      els.previewMarker.style.top = `${offsetY + box.y * scaleY}px`;
+      els.previewMarker.style.width = `${Math.max(4, box.width * scaleX)}px`;
+      els.previewMarker.style.height = `${Math.max(4, box.height * scaleY)}px`;
+    }
+
+    async function renderModalPage(pageNum, token) {
+      const record = state.modalPageRecords.get(pageNum);
+
+      if (
+        !record ||
+        record.rendered ||
+        record.rendering ||
+        token !== state.modalOpenToken ||
+        !els.pdfModal.classList.contains("open")
+      ) {
+        return;
+      }
+
+      record.rendering = true;
+
+      try {
+        const page = await state.pdf.getPage(pageNum);
+
+        if (token !== state.modalOpenToken) return;
+
+        const viewport = page.getViewport({ scale: record.scale });
+        const canvas = record.canvas;
+        const ctx = canvas.getContext("2d", { alpha: false });
+        const dpr = window.devicePixelRatio || 1;
+
+        canvas.width = Math.floor(viewport.width * dpr);
+        canvas.height = Math.floor(viewport.height * dpr);
+        canvas.style.width = `${viewport.width}px`;
+        canvas.style.height = `${viewport.height}px`;
+
+        await page.render({
+          canvasContext: ctx,
+          viewport,
+          transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null
+        }).promise;
+
+        if (token !== state.modalOpenToken) return;
+
+        record.rendered = true;
+        record.placeholder.style.display = "none";
+      } catch (error) {
+        console.error(`Seite ${pageNum} konnte nicht gerendert werden:`, error);
+        record.placeholder.textContent = `Seite ${pageNum} konnte nicht gerendert werden`;
+      } finally {
+        record.rendering = false;
+      }
+    }
+
+    function selectWordFromModal(globalIndex) {
+      const shouldResume = state.modalWasPlaying;
+
+      state.index = globalIndex;
+      renderWord();
+      closeModal(false);
+
+      if (shouldResume) {
+        play();
+      } else {
+        els.status.textContent =
+          `Startposition gesetzt · Wort ${globalIndex + 1}`;
+      }
+    }
+
+    async function openPdfAtCurrentWord() {
+      if (!state.pdf || !state.words.length) return;
+
+      state.modalWasPlaying = state.playing;
+
+      if (state.playing) {
+        pause();
+      }
+
+      const token = ++state.modalOpenToken;
+      const entry = state.words[state.index];
+
+      els.pdfModal.classList.add("open");
+      els.modalInfo.textContent =
+        `Gesamtes Dokument · Seite ${entry.page} · Wort anklicken, um dort weiterzulesen`;
+      document.body.style.overflow = "hidden";
+
+      if (state.modalRenderObserver) {
+        state.modalRenderObserver.disconnect();
+      }
+
+      state.modalPageRecords.clear();
+      els.modalDocument.innerHTML = "";
+
+      // Seiten zunächst mit korrekter Größe anlegen. Die Canvas-Inhalte
+      // werden anschließend nur in der Nähe des sichtbaren Bereichs gerendert.
+      for (let pageNum = 1; pageNum <= state.pdf.numPages; pageNum++) {
+        const page = await state.pdf.getPage(pageNum);
+
+        if (
+          token !== state.modalOpenToken ||
+          !els.pdfModal.classList.contains("open")
+        ) {
+          return;
+        }
+
+        const base = page.getViewport({ scale: 1 });
+        const targetWidth = Math.min(window.innerWidth - 90, 1500);
+        const scale = Math.max(0.45, Math.min(2.2, targetWidth / base.width));
+        const viewport = page.getViewport({ scale });
+
+        const wrapper = document.createElement("section");
+        wrapper.className = "modal-page";
+        wrapper.dataset.page = String(pageNum);
+        wrapper.dataset.pageLabel = `Seite ${pageNum} / ${state.pdf.numPages}`;
+        wrapper.style.width = `${viewport.width}px`;
+        wrapper.style.height = `${viewport.height}px`;
+
+        const placeholder = document.createElement("div");
+        placeholder.className = "modal-page-placeholder";
+        placeholder.textContent = `Seite ${pageNum} wird geladen …`;
+
+        const canvas = document.createElement("canvas");
+        canvas.className = "modal-page-canvas";
+
+        const wordLayer = document.createElement("div");
+        wordLayer.className = "modal-word-layer";
+
+        const marker = document.createElement("div");
+        marker.className = "modal-marker";
+
+        wrapper.appendChild(placeholder);
+        wrapper.appendChild(canvas);
+        wrapper.appendChild(wordLayer);
+        wrapper.appendChild(marker);
+        els.modalDocument.appendChild(wrapper);
+
+        state.modalPageRecords.set(pageNum, {
+          wrapper,
+          placeholder,
+          canvas,
+          wordLayer,
+          marker,
+          scale,
+          rendered: false,
+          rendering: false
+        });
+      }
+
+      // Klickflächen für alle Wörter des gesamten Dokuments anlegen.
+      state.words.forEach((wordEntry, globalIndex) => {
+        const record = state.modalPageRecords.get(wordEntry.page);
+        if (!record) return;
+
+        const box = wordEntry.box;
+        const hit = document.createElement("div");
+        hit.className = "modal-word-hitbox";
+        hit.title = `Ab „${wordEntry.text}“ weiterlesen`;
+        hit.style.left = `${box.x * record.scale}px`;
+        hit.style.top = `${box.y * record.scale}px`;
+        hit.style.width = `${Math.max(6, box.width * record.scale)}px`;
+        hit.style.height = `${Math.max(8, box.height * record.scale)}px`;
+
+        hit.addEventListener("click", event => {
+          event.stopPropagation();
+          selectWordFromModal(globalIndex);
+        });
+
+        record.wordLayer.appendChild(hit);
+      });
+
+      // Aktuelle Stelle markieren.
+      const currentRecord = state.modalPageRecords.get(entry.page);
+
+      if (currentRecord) {
+        const box = entry.box;
+        const marker = currentRecord.marker;
+
+        marker.style.display = "block";
+        marker.style.left = `${box.x * currentRecord.scale}px`;
+        marker.style.top = `${box.y * currentRecord.scale}px`;
+        marker.style.width =
+          `${Math.max(8, box.width * currentRecord.scale)}px`;
+        marker.style.height =
+          `${Math.max(8, box.height * currentRecord.scale)}px`;
+      }
+
+      // Lazy Rendering: sichtbare und angrenzende Seiten laden.
+      state.modalRenderObserver = new IntersectionObserver(
+        entries => {
+          for (const observerEntry of entries) {
+            if (!observerEntry.isIntersecting) continue;
+
+            const pageNum = Number(observerEntry.target.dataset.page);
+            renderModalPage(pageNum, token);
+          }
+        },
+        {
+          root: els.modalScroll,
+          rootMargin: "1200px 0px",
+          threshold: 0.01
+        }
+      );
+
+      for (const record of state.modalPageRecords.values()) {
+        state.modalRenderObserver.observe(record.wrapper);
+      }
+
+      // Aktuelle Seite sofort rendern, plus direkte Nachbarn.
+      const initialPages = [
+        entry.page - 1,
+        entry.page,
+        entry.page + 1
+      ].filter(pageNum =>
+        pageNum >= 1 && pageNum <= state.pdf.numPages
+      );
+
+      await Promise.all(
+        initialPages.map(pageNum => renderModalPage(pageNum, token))
+      );
+
+      if (
+        token !== state.modalOpenToken ||
+        !els.pdfModal.classList.contains("open")
+      ) {
+        return;
+      }
+
+      requestAnimationFrame(() => {
+        const record = state.modalPageRecords.get(entry.page);
+        if (!record) return;
+
+        const box = entry.box;
+        const scrollTop =
+          record.wrapper.offsetTop +
+          box.y * record.scale -
+          window.innerHeight * 0.35;
+
+        const scrollLeft =
+          record.wrapper.offsetLeft +
+          box.x * record.scale -
+          window.innerWidth * 0.35;
+
+        els.modalScroll.scrollTo({
+          top: Math.max(0, scrollTop),
+          left: Math.max(0, scrollLeft),
+          behavior: "instant"
+        });
+      });
+    }
+
+    function closeModal(resumePreviousPlayback = true) {
+      els.pdfModal.classList.remove("open");
+      document.body.style.overflow = "";
+      state.modalOpenToken += 1;
+
+      if (state.modalRenderObserver) {
+        state.modalRenderObserver.disconnect();
+        state.modalRenderObserver = null;
+      }
+
+      state.modalPageRecords.clear();
+      els.modalDocument.innerHTML = "";
+
+      const shouldResume =
+        resumePreviousPlayback &&
+        state.modalWasPlaying &&
+        !state.playing;
+
+      state.modalWasPlaying = false;
+
+      if (shouldResume) {
+        play();
+      }
+    }
+
+
+    els.fileInput.addEventListener("change", (event) => {
+      loadPdf(event.target.files?.[0]);
+      event.target.value = "";
+    });
+
+    els.textButton.addEventListener("click", openTextModal);
+    els.emptyTextButton.addEventListener("click", openTextModal);
+    els.closeTextModalButton.addEventListener("click", closeTextModal);
+    els.loadTextButton.addEventListener("click", () => loadPlainText(els.textArea.value));
+
+    els.textArea.addEventListener("keydown", (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        event.preventDefault();
+        loadPlainText(els.textArea.value);
+      }
+    });
+
+    els.textModal.addEventListener("click", (event) => {
+      if (event.target === els.textModal) closeTextModal();
+    });
+
+    els.playButton.addEventListener("click", () => {
+      state.playing ? pause() : play();
+    });
+
+    els.backButton.addEventListener("click", () => jumpTo(state.index - 10));
+    els.forwardButton.addEventListener("click", () => jumpTo(state.index + 10));
+
+    els.wpm.addEventListener("input", () => {
+      els.wpmValue.textContent = els.wpm.value;
+      updateInfo();
+      if (state.playing) {
+        scheduleNext();
+
+        if (els.speechToggle.checked) {
+          restartSpeechSoon();
+        }
+      }
+    });
+
+    els.fontSize.addEventListener("input", () => {
+      els.fontValue.textContent = els.fontSize.value;
+      els.word.style.fontSize = `${els.fontSize.value}px`;
+    });
+
+    els.orpToggle.addEventListener("change", renderWord);
+
+    els.progress.addEventListener("input", () => {
+      jumpTo(Number(els.progress.value), false);
+    });
+
+    els.progress.addEventListener("change", () => {
+      if (!state.playing) return;
+
+      scheduleNext();
+
+      if (els.speechToggle.checked) {
+        restartSpeechSoon();
+      }
+    });
+
+    els.speechToggle.addEventListener("change", () => {
+      stopSpeechEngine();
+
+      if (els.speechToggle.checked) {
+        els.speechState.textContent = "Bereit";
+        state.speechRetryCount = 0;
+
+        if (state.playing) {
+          els.status.textContent = "Läuft · Audio parallel";
+          startSpeechFromCurrent();
+        }
+      } else {
+        els.speechState.textContent = "Aus";
+
+        if (state.playing) {
+          els.status.textContent = "Läuft";
+          scheduleNext();
+        }
+      }
+    });
+
+    els.voiceSelect.addEventListener("change", () => {
+      if (state.playing && els.speechToggle.checked) restartSpeechSoon();
+    });
+
+    els.preview.addEventListener("click", openPdfAtCurrentWord);
+    els.closeModalButton.addEventListener("click", () => closeModal(true));
+
+    els.openNativeButton.addEventListener("click", () => {
+      if (!state.pdfUrl || !state.words.length) return;
+      const page = state.words[state.index].page;
+      window.open(`${state.pdfUrl}#page=${page}`, "_blank", "noopener");
+    });
+
+    els.pdfModal.addEventListener("click", (event) => {
+      if (event.target === els.pdfModal) closeModal(true);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      const tag = document.activeElement?.tagName;
+      const editing = tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA";
+
+      if (event.key === "Escape" && els.textModal.classList.contains("open")) {
+        closeTextModal();
+        return;
+      }
+
+      if (event.key === "Escape" && els.pdfModal.classList.contains("open")) {
+        closeModal(true);
+        return;
+      }
+
+      if (
+        editing ||
+        els.pdfModal.classList.contains("open") ||
+        els.textModal.classList.contains("open")
+      ) return;
+
+      if (event.code === "Space") {
+        event.preventDefault();
+        state.playing ? pause() : play();
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        jumpTo(state.index - (event.shiftKey ? 10 : 1));
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        jumpTo(state.index + (event.shiftKey ? 10 : 1));
+      }
+    });
+
+    let dragDepth = 0;
+
+    window.addEventListener("dragenter", (event) => {
+      event.preventDefault();
+      dragDepth++;
+      els.dropZone.classList.add("visible");
+    });
+
+    window.addEventListener("dragover", (event) => {
+      event.preventDefault();
+    });
+
+    window.addEventListener("dragleave", (event) => {
+      event.preventDefault();
+      dragDepth--;
+      if (dragDepth <= 0) {
+        dragDepth = 0;
+        els.dropZone.classList.remove("visible");
+      }
+    });
+
+    window.addEventListener("drop", (event) => {
+      event.preventDefault();
+      dragDepth = 0;
+      els.dropZone.classList.remove("visible");
+      const file = [...event.dataTransfer.files].find(f =>
+        f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")
+      );
+      if (file) loadPdf(file);
+    });
+
+    window.addEventListener("resize", () => {
+      if (state.pdf && state.words.length) {
+        state.currentPreviewPage = null;
+        renderPreviewPage(state.words[state.index].page);
+      }
+    });
+
+    // Anfangszustand
+    els.word.style.fontSize = `${els.fontSize.value}px`;
+    els.wpmValue.textContent = els.wpm.value;
+    els.fontValue.textContent = els.fontSize.value;
+  </script>
+</body>
+</html>
