@@ -58,7 +58,7 @@
       z-index: 20;
       top: 16px;
       left: 16px;
-      right: 16px;
+      right: 62px;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -66,6 +66,23 @@
     }
 
     #topbar > * { pointer-events: auto; }
+
+    #infoButton {
+      position: absolute;
+      z-index: 24;
+      top: 16px;
+      right: 16px;
+      width: 34px;
+      height: 34px;
+      min-height: 34px;
+      padding: 0;
+      border-radius: 50%;
+      background: #202020;
+      color: #fff;
+      border-color: #444;
+      font-weight: 800;
+      line-height: 1;
+    }
 
     #fileButton,
     #textButton {
@@ -391,6 +408,7 @@
     }
 
     #app.focus-mode #topbar,
+    #app.focus-mode #infoButton,
     #app.focus-mode #progressRow,
     #app.focus-mode #controls,
     #app.focus-mode #preview {
@@ -462,6 +480,66 @@
       background: rgba(0,0,0,.82);
     }
     #textModal.open { display: grid; }
+
+    #infoModal {
+      position: fixed;
+      inset: 0;
+      z-index: 130;
+      display: none;
+      place-items: center;
+      padding: 22px;
+      background: rgba(0,0,0,.82);
+    }
+    #infoModal.open { display: grid; }
+
+    #infoCard {
+      width: min(520px, 92vw);
+      padding: 20px;
+      border: 1px solid #343434;
+      border-radius: 12px;
+      background: #101010;
+      box-shadow: 0 24px 80px rgba(0,0,0,.55);
+    }
+
+    #infoHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    #infoHeader h2 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    #infoCard ul {
+      margin: 0;
+      padding-left: 20px;
+      color: #d8d8d8;
+      line-height: 1.65;
+    }
+
+    #speedHud {
+      position: fixed;
+      z-index: 90;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+      padding: 10px 16px;
+      border: 1px solid #3a3a3a;
+      border-radius: 10px;
+      background: rgba(10,10,10,.88);
+      color: #fff;
+      font-size: 22px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      pointer-events: none;
+    }
+    #speedHud.visible { display: block; }
 
     #textOverviewModal {
       position: fixed;
@@ -764,10 +842,18 @@
       #topbar {
         top: max(10px, env(safe-area-inset-top));
         left: 12px;
-        right: 12px;
+        right: 54px;
         flex-wrap: wrap;
         align-items: stretch;
         gap: 8px;
+      }
+
+      #infoButton {
+        top: max(10px, env(safe-area-inset-top));
+        right: 12px;
+        width: 34px;
+        height: 34px;
+        min-height: 34px;
       }
 
       #fileButton,
@@ -938,6 +1024,20 @@
         padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
       }
 
+      #infoModal {
+        padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
+      }
+
+      #infoCard {
+        width: 100%;
+        padding: 16px;
+        border-radius: 8px;
+      }
+
+      #infoHeader h2 {
+        font-size: 18px;
+      }
+
       #textModalCard {
         width: 100%;
         max-height: calc(100dvh - 20px);
@@ -1012,6 +1112,8 @@
 
 <body>
   <div id="app">
+    <button id="infoButton" type="button" aria-label="Bedienung anzeigen">i</button>
+
     <div id="topbar">
       <label id="fileButton" for="fileInput">PDF öffnen</label>
       <input id="fileInput" type="file" accept="application/pdf,.pdf" />
@@ -1107,6 +1209,8 @@
 
     <div id="dropZone">PDF hier ablegen</div>
 
+    <div id="speedHud">350 WPM</div>
+
     <div id="pdfModal">
       <div id="modalToolbar">
         <span id="modalInfo">Seite –</span>
@@ -1125,6 +1229,24 @@
       </div>
       <div id="textOverviewScroll">
         <div id="textOverviewContent"></div>
+      </div>
+    </div>
+
+    <div id="infoModal">
+      <div id="infoCard">
+        <div id="infoHeader">
+          <h2>Bedienung</h2>
+          <button id="closeInfoButton" type="button">Schließen</button>
+        </div>
+        <ul>
+          <li>Wort antippen: Start oder Pause.</li>
+          <li>Wort doppeltippen: PDF- oder Textübersicht öffnen.</li>
+          <li>Schwarzen Bereich antippen: Fokusmodus ein oder aus.</li>
+          <li>Lange drücken und nach oben/unten ziehen: Geschwindigkeit ändern.</li>
+          <li>Im Reader zwei Finger auseinander/zusammen: Schriftgröße ändern.</li>
+          <li>In der PDF-Ansicht zwei Finger auseinander/zusammen: PDF zoomen.</li>
+          <li>Links/rechts am Rand doppeltippen: 10 Wörter zurück oder vor.</li>
+        </ul>
       </div>
     </div>
 
@@ -1160,6 +1282,10 @@
 
     const els = {
       app: $("app"),
+      infoButton: $("infoButton"),
+      infoModal: $("infoModal"),
+      closeInfoButton: $("closeInfoButton"),
+      speedHud: $("speedHud"),
       fileInput: $("fileInput"),
       textButton: $("textButton"),
       emptyTextButton: $("emptyTextButton"),
@@ -1247,6 +1373,11 @@
       lastReaderTapAt: 0,
       lastPdfEdgeTapAt: 0,
       pdfSuppressTapUntil: 0,
+      speedHoldTimer: null,
+      speedTouchStartY: null,
+      speedTouchStartWpm: null,
+      speedAdjusting: false,
+      speedTouchMoved: false,
     };
 
     function escapeHtml(text) {
@@ -1740,6 +1871,36 @@
       els.word.style.fontSize = `${next}px`;
     }
 
+    function setReaderWpm(value) {
+      const min = Number(els.wpm.min);
+      const max = Number(els.wpm.max);
+      const step = Number(els.wpm.step) || 10;
+      const rounded = Math.round(value / step) * step;
+      const next = Math.max(min, Math.min(max, rounded));
+
+      els.wpm.value = String(next);
+      els.wpmValue.textContent = String(next);
+      els.speedHud.textContent = `${next} WPM`;
+      updateInfo();
+
+      if (state.playing) {
+        scheduleNext();
+
+        if (els.speechToggle.checked) {
+          restartSpeechSoon();
+        }
+      }
+    }
+
+    function openInfoModal() {
+      pause();
+      els.infoModal.classList.add("open");
+    }
+
+    function closeInfoModal() {
+      els.infoModal.classList.remove("open");
+    }
+
     function touchDistance(touches) {
       const dx = touches[0].clientX - touches[1].clientX;
       const dy = touches[0].clientY - touches[1].clientY;
@@ -1770,6 +1931,52 @@
     function cancelReaderFocusToggle() {
       clearTimeout(state.readerClickTimer);
       state.readerClickTimer = null;
+    }
+
+    function cancelSpeedHold() {
+      clearTimeout(state.speedHoldTimer);
+      state.speedHoldTimer = null;
+    }
+
+    function finishSpeedAdjustment() {
+      cancelSpeedHold();
+
+      if (!state.speedAdjusting) return;
+
+      state.speedAdjusting = false;
+      state.speedTouchStartY = null;
+      state.speedTouchStartWpm = null;
+      state.speedTouchMoved = false;
+      els.speedHud.classList.remove("visible");
+
+      window.setTimeout(() => {
+        state.suppressNextTap = false;
+      }, 220);
+    }
+
+    function startSpeedHold(y) {
+      if (!state.words.length) return;
+
+      cancelSpeedHold();
+      state.speedTouchStartY = y;
+      state.speedTouchStartWpm = Number(els.wpm.value);
+      state.speedAdjusting = false;
+      state.speedTouchMoved = false;
+
+      state.speedHoldTimer = window.setTimeout(() => {
+        state.speedAdjusting = true;
+        state.suppressNextTap = true;
+        els.speedHud.textContent = `${els.wpm.value} WPM`;
+        els.speedHud.classList.add("visible");
+      }, 420);
+    }
+
+    function updateSpeedFromTouch(y) {
+      if (!state.speedAdjusting || state.speedTouchStartY === null) return;
+
+      const deltaY = state.speedTouchStartY - y;
+      const next = state.speedTouchStartWpm + deltaY * 2.2;
+      setReaderWpm(next);
     }
 
     function handleReaderTouchTap(x) {
@@ -2423,6 +2630,13 @@
       if (event.target === els.textModal) closeTextModal();
     });
 
+    els.infoButton.addEventListener("click", openInfoModal);
+    els.closeInfoButton.addEventListener("click", closeInfoModal);
+
+    els.infoModal.addEventListener("click", (event) => {
+      if (event.target === els.infoModal) closeInfoModal();
+    });
+
     els.closeTextOverviewButton.addEventListener("click", () => closeTextOverview(true));
 
     els.textOverviewModal.addEventListener("click", (event) => {
@@ -2437,15 +2651,7 @@
     els.forwardButton.addEventListener("click", () => jumpTo(state.index + 10));
 
     els.wpm.addEventListener("input", () => {
-      els.wpmValue.textContent = els.wpm.value;
-      updateInfo();
-      if (state.playing) {
-        scheduleNext();
-
-        if (els.speechToggle.checked) {
-          restartSpeechSoon();
-        }
-      }
+      setReaderWpm(Number(els.wpm.value));
     });
 
     els.fontSize.addEventListener("input", () => {
@@ -2509,6 +2715,19 @@
 
     els.word.addEventListener("touchend", (event) => {
       event.stopPropagation();
+      if (state.speedAdjusting) {
+        finishSpeedAdjustment();
+        event.preventDefault();
+        return;
+      }
+
+      cancelSpeedHold();
+
+      if (state.speedTouchMoved) {
+        state.speedTouchMoved = false;
+        return;
+      }
+
       if (state.suppressNextTap) return;
 
       event.preventDefault();
@@ -2530,8 +2749,14 @@
     });
 
     els.readerInner.addEventListener("touchstart", (event) => {
+      if (event.touches.length === 1) {
+        startSpeedHold(event.touches[0].clientY);
+        return;
+      }
+
       if (event.touches.length !== 2) return;
 
+      cancelSpeedHold();
       state.pinchActive = true;
       state.suppressNextTap = true;
       state.pinchStartDistance = touchDistance(event.touches);
@@ -2539,6 +2764,21 @@
     }, { passive: true });
 
     els.readerInner.addEventListener("touchmove", (event) => {
+      if (state.speedAdjusting && event.touches.length === 1) {
+        event.preventDefault();
+        updateSpeedFromTouch(event.touches[0].clientY);
+        return;
+      }
+
+      if (event.touches.length === 1 && state.speedTouchStartY !== null) {
+        const moved = Math.abs(event.touches[0].clientY - state.speedTouchStartY);
+
+        if (moved > 18 && !state.speedAdjusting) {
+          state.speedTouchMoved = true;
+          cancelSpeedHold();
+        }
+      }
+
       if (
         !state.pinchActive ||
         event.touches.length !== 2 ||
@@ -2568,11 +2808,26 @@
     els.readerInner.addEventListener("touchcancel", finishPinchGesture);
 
     els.readerInner.addEventListener("touchend", (event) => {
+      if (state.speedAdjusting) {
+        finishSpeedAdjustment();
+        event.preventDefault();
+        return;
+      }
+
+      cancelSpeedHold();
+
+      if (state.speedTouchMoved) {
+        state.speedTouchMoved = false;
+        return;
+      }
+
       if (state.suppressNextTap || event.changedTouches.length !== 1) return;
 
       event.preventDefault();
       handleReaderTouchTap(event.changedTouches[0].clientX);
     }, { passive: false });
+
+    els.readerInner.addEventListener("touchcancel", finishSpeedAdjustment);
 
     els.closeModalButton.addEventListener("click", () => closeModal(true));
 
@@ -2664,6 +2919,11 @@
         return;
       }
 
+      if (event.key === "Escape" && els.infoModal.classList.contains("open")) {
+        closeInfoModal();
+        return;
+      }
+
       if (event.key === "Escape" && els.textOverviewModal.classList.contains("open")) {
         closeTextOverview(true);
         return;
@@ -2678,6 +2938,7 @@
         editing ||
         els.pdfModal.classList.contains("open") ||
         els.textModal.classList.contains("open") ||
+        els.infoModal.classList.contains("open") ||
         els.textOverviewModal.classList.contains("open")
       ) return;
 
