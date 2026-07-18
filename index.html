@@ -390,6 +390,22 @@
       right: 22px;
     }
 
+    #app.focus-mode #topbar,
+    #app.focus-mode #progressRow,
+    #app.focus-mode #controls,
+    #app.focus-mode #preview {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #app.focus-mode #reader {
+      inset: 0;
+    }
+
+    #app.focus-mode .focus-tick {
+      display: none;
+    }
+
     #previewHeader {
       height: 24px;
       display: flex;
@@ -1227,6 +1243,7 @@
       pinchStartFontSize: null,
       pinchActive: false,
       suppressNextTap: false,
+      focusMode: false,
     };
 
     function escapeHtml(text) {
@@ -1660,6 +1677,7 @@
       state.sourceType = sourceType;
       state.words = [];
       state.index = 0;
+      state.focusMode = false;
       resetPreview();
       els.progress.max = "0";
       els.progress.value = "0";
@@ -1669,6 +1687,7 @@
       els.forwardButton.disabled = true;
       els.mobilePdfButton.disabled = true;
       els.app.classList.toggle("text-mode", sourceType === "text");
+      els.app.classList.remove("focus-mode");
     }
 
     function activateReader(words, label, statusText) {
@@ -1801,6 +1820,13 @@
       } else {
         openTextOverview();
       }
+    }
+
+    function toggleFocusMode() {
+      if (!state.words.length) return;
+
+      state.focusMode = !state.focusMode;
+      els.app.classList.toggle("focus-mode", state.focusMode);
     }
 
     function loadPlainText(text) {
@@ -2338,9 +2364,15 @@
 
     els.preview.addEventListener("click", openPdfAtCurrentWord);
     els.mobilePdfButton.addEventListener("click", openPdfAtCurrentWord);
-    els.readerInner.addEventListener("click", () => {
+    els.word.addEventListener("click", (event) => {
+      event.stopPropagation();
       if (state.suppressNextTap) return;
       openCurrentOverview();
+    });
+
+    els.readerInner.addEventListener("click", () => {
+      if (state.suppressNextTap) return;
+      toggleFocusMode();
     });
 
     els.readerInner.addEventListener("touchstart", (event) => {
